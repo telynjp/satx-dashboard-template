@@ -152,16 +152,22 @@ api_key_manager = APIKeyManager()
 ip_allowlist = IPAllowlist()
 
 def get_client_ip():
-    """Get client IP address, considering proxies"""
-    if request.environ.get('HTTP_X_FORWARDED_FOR'):
-        # Behind proxy
-        return request.environ['HTTP_X_FORWARDED_FOR'].split(',')[0].strip()
-    elif request.environ.get('HTTP_X_REAL_IP'):
-        # nginx proxy
-        return request.environ['HTTP_X_REAL_IP']
-    else:
-        # Direct connection
-        return request.environ.get('REMOTE_ADDR', '')
+    """Get client IP address.
+
+    Forwarded headers are client-controlled, so they are only honoured when
+    TRUST_PROXY=1 says a reverse proxy we control sets them. Otherwise anyone
+    could send "X-Forwarded-For: 127.0.0.1" and pass the IP allowlist.
+    """
+    remote_addr = request.environ.get('REMOTE_ADDR', '')
+    if os.environ.get('TRUST_PROXY') == '1':
+        forwarded = request.environ.get('HTTP_X_FORWARDED_FOR')
+        if forwarded:
+            # The right-most entry is the one appended by our own proxy.
+            return forwarded.split(',')[-1].strip()
+        real_ip = request.environ.get('HTTP_X_REAL_IP')
+        if real_ip:
+            return real_ip.strip()
+    return remote_addr
 
 def require_api_key(f):
     """Decorator to require API key for endpoints"""

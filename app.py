@@ -331,7 +331,7 @@ def crimes_list():
 def api_crimes():
     # Get query parameters
     page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 100, type=int)
+    per_page = max(1, min(request.args.get('per_page', 100, type=int), 500))
     
     # Build filters from query params
     filters = {}
@@ -475,7 +475,7 @@ def arrests_list():
 def api_arrests():
     # Get query parameters
     page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 100, type=int)
+    per_page = max(1, min(request.args.get('per_page', 100, type=int), 500))
     
     # Build filters from query params
     filters = {}
@@ -624,10 +624,9 @@ def calls_list():
 @ip_restrict  # Only allow from trusted IPs
 def generate_api_key():
     """Generate a new API key (admin only)"""
-    client_ip = get_client_ip()
-    
-    # Extra security: only allow from localhost
-    if client_ip not in ['127.0.0.1', '::1']:
+    # Extra security: only allow from localhost. Use the socket peer address,
+    # never a forwarded header, so this cannot be spoofed by the caller.
+    if request.remote_addr not in ['127.0.0.1', '::1']:
         return jsonify({'error': 'Access denied'}), 403
     
     # Get description from request
@@ -658,7 +657,7 @@ def health_check():
 def api_calls():
     # Get query parameters
     page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 100, type=int)
+    per_page = max(1, min(request.args.get('per_page', 100, type=int), 500))
     
     # Build filters from query params
     filters = {}

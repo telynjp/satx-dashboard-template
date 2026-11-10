@@ -91,6 +91,7 @@ Create a `.env` file based on `.env.example`:
 ```bash
 # Allowed IP addresses or networks (comma-separated)
 ALLOWED_IPS=192.168.1.0/24,10.0.0.0/8
+TRUST_PROXY=1   # only when a reverse proxy you control sets X-Forwarded-For; otherwise leave unset
 
 # Flask configuration
 FLASK_ENV=production
