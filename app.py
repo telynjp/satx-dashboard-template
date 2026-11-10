@@ -32,7 +32,7 @@ def manual_full_refresh():
         print("\nAll historical data has been fetched successfully!")
     except Exception as e:
         print(f"Error during full data refresh: {e}")
-from security import require_api_key, rate_limit, ip_restrict, secure_headers, api_key_manager, get_client_ip
+from security import require_api_key, require_admin_token, rate_limit, ip_restrict, secure_headers, api_key_manager, get_client_ip
 from datetime import datetime
 import pytz
 import json
@@ -622,13 +622,15 @@ def calls_list():
 
 @app.route('/admin/generate-api-key', methods=['POST'])
 @ip_restrict  # Only allow from trusted IPs
+@require_admin_token  # Disabled unless ADMIN_TOKEN is set; caller must present it
 def generate_api_key():
-    """Generate a new API key (admin only)"""
-    # Extra security: only allow from localhost. Use the socket peer address,
-    # never a forwarded header, so this cannot be spoofed by the caller.
-    if request.remote_addr not in ['127.0.0.1', '::1']:
-        return jsonify({'error': 'Access denied'}), 403
-    
+    """Generate a new API key (admin only).
+
+    Access is decided by the ADMIN_TOKEN secret, not by the caller's address: behind a
+    reverse proxy on the same host every request arrives from 127.0.0.1, so an address
+    check cannot tell an administrator from a visitor. The IP allowlist above stays as a
+    second layer. For one-off keys, prefer the CLI: python generate_api_key.py "name".
+    """
     # Get description from request
     data = request.get_json() or {}
     description = data.get('description', f'Generated at {datetime.now(CST)}')

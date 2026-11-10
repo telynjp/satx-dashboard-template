@@ -42,12 +42,21 @@ The Crime Dashboard API is protected by multiple layers of security to prevent u
 python generate_api_key.py "Description of client"
 ```
 
-#### Method 2: Admin API Endpoint (localhost only)
+#### Method 2: Admin API Endpoint (off by default)
+
+The endpoint returns 404 unless the `ADMIN_TOKEN` environment variable is set. When it is set,
+send the same value in the `X-Admin-Token` header. Access is decided by that secret, not by
+where the request comes from: behind a reverse proxy on the same host, every visitor appears
+to be `127.0.0.1`.
+
 ```bash
 curl -X POST http://localhost:5001/admin/generate-api-key \
   -H "Content-Type: application/json" \
+  -H "X-Admin-Token: $ADMIN_TOKEN" \
   -d '{"description": "Mobile App Client"}'
 ```
+
+Use a long random value, for example `python -c "import secrets; print(secrets.token_urlsafe(32))"`.
 
 ### Using API Keys
 
@@ -92,6 +101,11 @@ Create a `.env` file based on `.env.example`:
 # Allowed IP addresses or networks (comma-separated)
 ALLOWED_IPS=192.168.1.0/24,10.0.0.0/8
 TRUST_PROXY=1   # only when a reverse proxy you control sets X-Forwarded-For; otherwise leave unset
+# Behind a proxy WITHOUT TRUST_PROXY=1, every request appears to come from the proxy's address,
+# so the IP allowlist and per-IP rate limits cannot tell visitors apart. Set it.
+
+# Enables POST /admin/generate-api-key. Leave unset to keep that endpoint disabled.
+ADMIN_TOKEN=
 
 # Flask configuration
 FLASK_ENV=production
