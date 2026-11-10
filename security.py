@@ -247,6 +247,20 @@ def ip_restrict(f):
     
     return decorated_function
 
+def ip_restrict_strict(f):
+    """Restrict access by IP with no exception for API-key holders.
+
+    ip_restrict lets any valid client API key skip the allowlist, which is right for data
+    endpoints and wrong for admin ones: a client key must not widen who can reach them.
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not ip_allowlist.is_allowed(get_client_ip()):
+            return jsonify({'error': 'Access denied'}), 403
+        return f(*args, **kwargs)
+
+    return decorated_function
+
 def secure_headers(response):
     """Add security headers to response"""
     response.headers['X-Content-Type-Options'] = 'nosniff'

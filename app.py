@@ -32,7 +32,7 @@ def manual_full_refresh():
         print("\nAll historical data has been fetched successfully!")
     except Exception as e:
         print(f"Error during full data refresh: {e}")
-from security import require_api_key, require_admin_token, rate_limit, ip_restrict, secure_headers, api_key_manager, get_client_ip
+from security import require_api_key, require_admin_token, rate_limit, ip_restrict, ip_restrict_strict, secure_headers, api_key_manager, get_client_ip
 from datetime import datetime
 import pytz
 import json
@@ -621,7 +621,7 @@ def calls_list():
                          days=days)
 
 @app.route('/admin/generate-api-key', methods=['POST'])
-@ip_restrict  # Only allow from trusted IPs
+@ip_restrict_strict  # Allowlisted IPs only; a client API key does not bypass this
 @require_admin_token  # Disabled unless ADMIN_TOKEN is set; caller must present it
 def generate_api_key():
     """Generate a new API key (admin only).
