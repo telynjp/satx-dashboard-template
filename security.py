@@ -186,6 +186,27 @@ def require_api_key(f):
     
     return decorated_function
 
+def require_admin_token(f):
+    """Gate an admin endpoint on a shared secret instead of on where the request came from.
+
+    Network position is not proof of identity: behind a reverse proxy on the same host, every
+    visitor's socket address is 127.0.0.1, so a "localhost only" check lets everyone in. The
+    endpoint is therefore disabled unless ADMIN_TOKEN is set, and when it is set the caller must
+    send the same value in the X-Admin-Token header.
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        expected = os.environ.get('ADMIN_TOKEN', '')
+        if not expected:
+            # Not configured: behave as if the endpoint does not exist.
+            return jsonify({'error': 'Not found'}), 404
+        supplied = request.headers.get('X-Admin-Token', '')
+        if not hmac.compare_digest(supplied.encode(), expected.encode()):
+            return jsonify({'error': 'Access denied'}), 403
+        return f(*args, **kwargs)
+
+    return decorated_function
+
 def rate_limit(max_requests=60, window=60):
     """Decorator to apply rate limiting"""
     def decorator(f):
@@ -224,6 +245,20 @@ def ip_restrict(f):
         
         return f(*args, **kwargs)
     
+    return decorated_function
+
+def ip_restrict_strict(f):
+    """Restrict access by IP with no exception for API-key holders.
+
+    ip_restrict lets any valid client API key skip the allowlist, which is right for data
+    endpoints and wrong for admin ones: a client key must not widen who can reach them.
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not ip_allowlist.is_allowed(get_client_ip()):
+            return jsonify({'error': 'Access denied'}), 403
+        return f(*args, **kwargs)
+
     return decorated_function
 
 def secure_headers(response):
